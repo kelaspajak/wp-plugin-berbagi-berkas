@@ -210,7 +210,125 @@
 			sections.push( { applyTrail: applyTrail, render: render } );
 		}
 
+		function initList( list ) {
+			var loadmore = list.nextElementSibling;
+			if ( ! loadmore || ! loadmore.hasAttribute( 'data-dp-gdrive-loadmore' ) ) {
+				return;
+			}
+
+			var btn = loadmore.querySelector( '.dp-gdrive-loadmore__btn' );
+			var status = loadmore.querySelector( '.dp-gdrive-loadmore__status' );
+			var loadingText = status ? status.textContent : '';
+			var nonce = list.getAttribute( 'data-nonce' ) || '';
+			var perPage = parseInt( list.getAttribute( 'data-per-page' ), 10 ) || 5;
+			var offset = parseInt( list.getAttribute( 'data-offset' ), 10 ) || 0;
+			var total = parseInt( list.getAttribute( 'data-total' ), 10 ) || 0;
+			var showTitle = list.getAttribute( 'data-show-title' ) === '1' ? '1' : '0';
+			var busy = false;
+
+			function showButton() {
+				if ( btn ) {
+					btn.hidden = false;
+				}
+				if ( status ) {
+					status.textContent = loadingText;
+					status.hidden = true;
+				}
+			}
+
+			function load() {
+				if ( busy || offset >= total ) {
+					return;
+				}
+
+				busy = true;
+				if ( btn ) {
+					btn.hidden = true;
+				}
+				if ( status ) {
+					status.textContent = loadingText;
+					status.hidden = false;
+				}
+
+				var body = new URLSearchParams();
+				body.append( 'action', 'dp_gdrive_list' );
+				body.append( 'nonce', nonce );
+				body.append( 'offset', offset );
+				body.append( 'per_page', perPage );
+				body.append( 'show_title', showTitle );
+
+				fetch( config.ajaxUrl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: body.toString()
+				} )
+					.then( function ( response ) {
+						return response.json();
+					} )
+					.then( function ( json ) {
+						if ( ! json || ! json.success || ! json.data ) {
+							throw new Error( 'failed' );
+						}
+
+						var holder = document.createElement( 'div' );
+						holder.innerHTML = json.data.html;
+						var added = [];
+
+						while ( holder.firstChild ) {
+							var node = holder.firstChild;
+							holder.removeChild( node );
+							list.appendChild( node );
+							if ( node.nodeType === 1 && node.classList && node.classList.contains( 'dp-gdrive-bookmark' ) ) {
+								added.push( node );
+							}
+						}
+
+						added.forEach( initSection );
+
+						offset = parseInt( json.data.offset, 10 ) || offset;
+						total = parseInt( json.data.total, 10 ) || total;
+						busy = false;
+
+						if ( ! json.data.hasMore || offset >= total ) {
+							if ( loadmore.parentNode ) {
+								loadmore.parentNode.removeChild( loadmore );
+							}
+						} else {
+							showButton();
+						}
+					} )
+					.catch( function () {
+						busy = false;
+						if ( btn ) {
+							btn.hidden = false;
+						}
+						if ( status ) {
+							status.textContent = i18n.listError || 'Error';
+							status.hidden = false;
+						}
+					} );
+			}
+
+			if ( btn ) {
+				btn.addEventListener( 'click', load );
+			}
+
+			if ( 'IntersectionObserver' in window ) {
+				var observer = new IntersectionObserver( function ( entries ) {
+					entries.forEach( function ( entry ) {
+						if ( entry.isIntersecting ) {
+							load();
+						}
+					} );
+				}, { rootMargin: '300px 0px' } );
+
+				observer.observe( loadmore );
+			}
+		}
+
 		Array.prototype.forEach.call( document.querySelectorAll( '.dp-gdrive-bookmark[data-dp-gdrive]' ), initSection );
+		Array.prototype.forEach.call( document.querySelectorAll( '[data-dp-gdrive-list]' ), initList );
 
 		window.addEventListener( 'popstate', function () {
 			var trail = parseTrail();

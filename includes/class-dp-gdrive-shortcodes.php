@@ -26,6 +26,9 @@ class DP_GDrive_Shortcodes {
 
 		add_action( 'wp_ajax_dp_gdrive_expand', array( $this, 'ajax_expand' ) );
 		add_action( 'wp_ajax_nopriv_dp_gdrive_expand', array( $this, 'ajax_expand' ) );
+
+		add_action( 'wp_ajax_dp_gdrive_list', array( $this, 'ajax_list' ) );
+		add_action( 'wp_ajax_nopriv_dp_gdrive_list', array( $this, 'ajax_list' ) );
 	}
 
 	/**
@@ -53,8 +56,9 @@ class DP_GDrive_Shortcodes {
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'i18n'    => array(
-					'loading' => __( 'Memuat…', 'dp-googl-drive' ),
-					'error'   => __( 'Gagal memuat isi folder.', 'dp-googl-drive' ),
+					'loading'   => __( 'Memuat…', 'dp-googl-drive' ),
+					'error'     => __( 'Gagal memuat isi folder.', 'dp-googl-drive' ),
+					'listError' => __( 'Gagal memuat daftar. Coba lagi.', 'dp-googl-drive' ),
 				),
 			)
 		);
@@ -65,11 +69,49 @@ class DP_GDrive_Shortcodes {
 	 *
 	 * @return string
 	 */
-	public function render_list() {
+	public function render_list( $atts = array() ) {
+		$atts = shortcode_atts(
+			array(
+				'show_title' => 'yes',
+				'per_page'   => 0,
+			),
+			$atts,
+			'dp_googl_drive'
+		);
+
+		$show_title = ! in_array( strtolower( (string) $atts['show_title'] ), array( 'no', '0', 'false', 'off' ), true );
+		$per_page   = max( 0, absint( $atts['per_page'] ) );
+
 		wp_enqueue_style( 'dp-googl-drive' );
 		wp_enqueue_script( 'dp-googl-drive' );
 
-		return DP_GDrive_Templates::render_list();
+		return DP_GDrive_Templates::render_list( $show_title, $per_page > 0 ? $per_page : null );
+	}
+
+	/**
+	 * AJAX: return the next batch of bookmarks (lazy loading).
+	 */
+	public function ajax_list() {
+		check_ajax_referer( 'dp_gdrive_list', 'nonce' );
+
+		$offset     = isset( $_POST['offset'] ) ? absint( wp_unslash( $_POST['offset'] ) ) : 0;
+		$per_page   = isset( $_POST['per_page'] ) ? max( 1, absint( wp_unslash( $_POST['per_page'] ) ) ) : 5;
+		$show_title = ! isset( $_POST['show_title'] ) || '0' !== (string) wp_unslash( $_POST['show_title'] );
+
+		$visible = DP_GDrive_Templates::published_bookmarks();
+		$total   = count( $visible );
+		$slice   = array_slice( $visible, $offset, $per_page );
+
+		$offset += count( $slice );
+
+		wp_send_json_success(
+			array(
+				'html'    => DP_GDrive_Templates::render_bookmarks( $slice, $show_title ),
+				'offset'  => $offset,
+				'total'   => $total,
+				'hasMore' => $offset < $total,
+			)
+		);
 	}
 
 	/**
@@ -100,11 +142,13 @@ class DP_GDrive_Shortcodes {
 		}
 
 		$file_audience = array();
+		$can_download  = true;
 		if ( $bookmark && DP_GDrive_CPT::LINK === get_post_type( $bookmark ) ) {
 			$file_audience = (array) get_post_meta( $bookmark, '_dp_gdrive_file_audience', true );
+			$can_download  = DP_GDrive_Templates::can_download_bookmark( get_post( $bookmark ) );
 		}
 
-		wp_send_json_success( array( 'html' => DP_GDrive_Templates::render_items( $data['items'], true, $file_audience ) ) );
+		wp_send_json_success( array( 'html' => DP_GDrive_Templates::render_items( $data['items'], true, $file_audience, $can_download ) ) );
 	}
 
 	/**

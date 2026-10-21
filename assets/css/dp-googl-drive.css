@@ -66,6 +66,17 @@
 	background: rgba(128, 128, 128, 0.15);
 }
 
+.dp-gdrive-button--locked {
+	opacity: 0.5;
+	cursor: not-allowed;
+	border-style: dashed;
+}
+
+.dp-gdrive-button--locked:hover,
+.dp-gdrive-button--locked:focus {
+	background: transparent;
+}
+
 .dp-gdrive-error {
 	color: #b32d2e;
 }
@@ -152,45 +163,22 @@
 	opacity: 0.6;
 }
 
-.dp-gdrive-row--locked {
-	opacity: 0.7;
-}
-
-.dp-gdrive-lock {
-	display: inline-block;
-	padding: 0.35em 0.9em;
-	font-size: 0.9em;
-	border: 1px dashed rgba(128, 128, 128, 0.6);
-	border-radius: 6px;
-}
-
 .dp-gdrive-empty {
 	opacity: 0.7;
 	font-style: italic;
 }
 
-.dp-gdrive-pagination {
+.dp-gdrive-loadmore {
 	display: flex;
-	gap: 0.35em;
-	flex-wrap: wrap;
-	margin-top: 1em;
+	justify-content: center;
+	align-items: center;
+	gap: 0.6em;
+	margin: 1.25em 0;
 }
 
-.dp-gdrive-pagination a,
-.dp-gdrive-pagination span {
-	display: inline-block;
-	min-width: 2em;
-	padding: 0.3em 0.5em;
-	text-align: center;
-	text-decoration: none;
-	border: 1px solid currentColor;
-	border-radius: 4px;
-	color: inherit;
-}
-
-.dp-gdrive-pagination .current {
-	font-weight: 700;
-	background: rgba(128, 128, 128, 0.2);
+.dp-gdrive-loadmore__status {
+	opacity: 0.7;
+	font-size: 0.9em;
 }
 
 /* Submission form */

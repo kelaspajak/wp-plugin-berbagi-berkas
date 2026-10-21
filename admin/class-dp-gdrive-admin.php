@@ -208,6 +208,8 @@ class DP_GDrive_Admin {
 			<h2><?php esc_html_e( 'Menampilkan di halaman', 'dp-googl-drive' ); ?></h2>
 			<p><?php esc_html_e( 'Tempel shortcode ini di sebuah Page atau Post:', 'dp-googl-drive' ); ?></p>
 			<p><code>[dp_googl_drive]</code> &mdash; <?php esc_html_e( 'daftar bookmark yang sudah disetujui.', 'dp-googl-drive' ); ?></p>
+			<p><code>[dp_googl_drive show_title="no"]</code> &mdash; <?php esc_html_e( 'sembunyikan judul tiap bookmark (tampilkan hanya isinya).', 'dp-googl-drive' ); ?></p>
+			<p><code>[dp_googl_drive per_page="5"]</code> &mdash; <?php esc_html_e( 'jumlah bookmark per muat; sisanya dimuat otomatis saat di-scroll.', 'dp-googl-drive' ); ?></p>
 			<p><code>[dp_googl_drive_form]</code> &mdash; <?php esc_html_e( 'form bagi pengunjung untuk mengirim link (menunggu persetujuan).', 'dp-googl-drive' ); ?></p>
 		</div>
 		<?php
@@ -227,8 +229,11 @@ class DP_GDrive_Admin {
 
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><label for="dp-gdrive-per-page"><?php esc_html_e( 'Bookmark per halaman', 'dp-googl-drive' ); ?></label></th>
-						<td><input type="number" min="1" id="dp-gdrive-per-page" name="per_page" value="<?php echo esc_attr( $settings['per_page'] ); ?>" class="small-text" /></td>
+						<th scope="row"><label for="dp-gdrive-per-page"><?php esc_html_e( 'Bookmark per muat', 'dp-googl-drive' ); ?></label></th>
+						<td>
+							<input type="number" min="1" id="dp-gdrive-per-page" name="per_page" value="<?php echo esc_attr( $settings['per_page'] ); ?>" class="small-text" />
+							<p class="description"><?php esc_html_e( 'Jumlah bookmark yang dimuat sekaligus. Sisanya dimuat otomatis saat pengunjung men-scroll (lazy loading).', 'dp-googl-drive' ); ?></p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="dp-gdrive-cache"><?php esc_html_e( 'Masa cache folder (jam)', 'dp-googl-drive' ); ?></label></th>
@@ -380,10 +385,11 @@ class DP_GDrive_Admin {
 					<option value="logged_in" <?php selected( $audience, 'logged_in' ); ?>><?php esc_html_e( 'Pengguna login', 'dp-googl-drive' ); ?></option>
 					<option value="roles" <?php selected( $audience, 'roles' ); ?>><?php esc_html_e( 'Peran tertentu', 'dp-googl-drive' ); ?></option>
 				</select>
+				<span class="description"><?php esc_html_e( 'Menentukan siapa yang boleh mengunduh. Semua orang tetap melihat daftar file; tombol unduh dikunci bagi yang tidak berhak.', 'dp-googl-drive' ); ?></span>
 			</p>
 
 			<fieldset class="dp-gdrive-metabox__roles">
-				<legend class="screen-reader-text"><?php esc_html_e( 'Peran yang boleh melihat', 'dp-googl-drive' ); ?></legend>
+				<legend class="screen-reader-text"><?php esc_html_e( 'Peran yang boleh mengunduh', 'dp-googl-drive' ); ?></legend>
 				<?php
 				$wp_roles = wp_roles();
 				if ( $wp_roles ) :
@@ -405,7 +411,7 @@ class DP_GDrive_Admin {
 					<?php if ( empty( $file_items ) ) : ?>
 						<p class="description"><?php esc_html_e( 'Belum ada file yang bisa diatur (folder kosong, privat, atau tautan belum disimpan).', 'dp-googl-drive' ); ?></p>
 					<?php else : ?>
-						<p class="description"><?php esc_html_e( 'Centang “Publik” agar semua orang bisa mengunduh. Hilangkan centang lalu pilih peran untuk membatasi.', 'dp-googl-drive' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Centang “Publik” agar semua orang bisa mengunduh. Hilangkan centang lalu pilih peran untuk membatasi; nama file tetap tampil, tetapi tombol unduhnya dikunci bagi yang tidak berhak. Tanpa peran dipilih, tombol unduh terkunci untuk semua orang (kecuali admin).', 'dp-googl-drive' ); ?></p>
 						<?php
 						$wp_roles_list = wp_roles();
 						foreach ( $file_items as $file_item ) :
@@ -424,6 +430,9 @@ class DP_GDrive_Admin {
 										<?php foreach ( $wp_roles_list->roles as $role_slug => $role_obj ) : ?>
 											<label><input type="checkbox" name="dp_gdrive_file_roles[<?php echo esc_attr( $fid ); ?>][]" value="<?php echo esc_attr( $role_slug ); ?>" <?php checked( in_array( $role_slug, $roles_set, true ) ); ?> /> <?php echo esc_html( ! empty( $role_obj['name'] ) ? $role_obj['name'] : $role_slug ); ?></label>
 										<?php endforeach; ?>
+									<?php endif; ?>
+									<?php if ( $has_roles && empty( $roles_set ) ) : ?>
+										<p class="description"><?php esc_html_e( 'Belum ada peran dipilih — tombol unduh terkunci untuk semua orang (kecuali admin).', 'dp-googl-drive' ); ?></p>
 									<?php endif; ?>
 								</div>
 							</div>
@@ -500,28 +509,26 @@ class DP_GDrive_Admin {
 		$file_pub  = isset( $_POST['dp_gdrive_file_public'] ) && is_array( $_POST['dp_gdrive_file_public'] ) ? wp_unslash( $_POST['dp_gdrive_file_public'] ) : array();
 		$file_role = isset( $_POST['dp_gdrive_file_roles'] ) && is_array( $_POST['dp_gdrive_file_roles'] ) ? wp_unslash( $_POST['dp_gdrive_file_roles'] ) : array();
 
-		$file_audience = array();
+		if ( ! empty( $file_ids ) ) {
+			$file_audience = array();
 
-		foreach ( $file_ids as $file_id ) {
-			$file_id = (string) $file_id;
+			foreach ( $file_ids as $file_id ) {
+				$file_id = (string) $file_id;
 
-			if ( '' === $file_id || ! empty( $file_pub[ $file_id ] ) ) {
-				continue;
+				if ( '' === $file_id || ! empty( $file_pub[ $file_id ] ) ) {
+					continue;
+				}
+
+				$file_roles = array();
+				if ( isset( $file_role[ $file_id ] ) && is_array( $file_role[ $file_id ] ) ) {
+					$file_roles = array_values( array_filter( array_map( 'sanitize_key', $file_role[ $file_id ] ) ) );
+				}
+
+				$file_audience[ $file_id ] = $file_roles;
 			}
 
-			$file_roles = array();
-			if ( isset( $file_role[ $file_id ] ) && is_array( $file_role[ $file_id ] ) ) {
-				$file_roles = array_values( array_filter( array_map( 'sanitize_key', $file_role[ $file_id ] ) ) );
-			}
-
-			if ( empty( $file_roles ) ) {
-				continue;
-			}
-
-			$file_audience[ $file_id ] = $file_roles;
+			update_post_meta( $post_id, '_dp_gdrive_file_audience', $file_audience );
 		}
-
-		update_post_meta( $post_id, '_dp_gdrive_file_audience', $file_audience );
 
 		$valid  = ! empty( $parsed['id'] );
 		$status = ( $valid && $this->can_moderate() && isset( $_POST['dp_gdrive_status'] ) && 'publish' === $_POST['dp_gdrive_status'] ) ? 'publish' : 'pending';
@@ -693,7 +700,7 @@ class DP_GDrive_Admin {
 		}
 
 		$settings = array(
-			'per_page'           => isset( $_POST['per_page'] ) ? max( 1, absint( wp_unslash( $_POST['per_page'] ) ) ) : 20,
+			'per_page'           => isset( $_POST['per_page'] ) ? max( 1, absint( wp_unslash( $_POST['per_page'] ) ) ) : 5,
 			'cache_lifetime'     => isset( $_POST['cache_lifetime'] ) ? max( 1, absint( wp_unslash( $_POST['cache_lifetime'] ) ) ) : 6,
 			'allow_guest_submit' => isset( $_POST['allow_guest_submit'] ) ? 1 : 0,
 			'delete_data'        => isset( $_POST['delete_data'] ) ? 1 : 0,

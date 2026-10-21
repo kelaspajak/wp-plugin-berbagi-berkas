@@ -20,7 +20,7 @@ link"**.
 - **Folder dirinci per item** — nama, tanggal diubah, ikon, dan tombol unduh untuk tiap file.
 - **Telusuri subfolder (gaya Google Drive)** — klik nama folder untuk masuk ke isinya, lengkap dengan breadcrumb untuk naik; tanpa reload halaman. Posisi folder tercermin di URL (`?dp_gdrive_trail=…`) sehingga bisa di-bookmark dan tombol Back bekerja.
 - **Anak yang sudah jadi bookmark disembunyikan** — item yang punya entri bookmark sendiri tidak diulang di rincian folder induknya.
-- **Akses per file** — di meta box folder, tiap file punya centang “Publik”; hilangkan centang untuk membatasinya ke peran tertentu. File terbatas tetap tampil tetapi tombol unduhnya terkunci.
+- **Akses per file** — di meta box folder, tiap file punya centang “Publik”; hilangkan centang lalu pilih peran untuk membatasi. File terbatas tidak ditampilkan bagi yang tidak berhak. Tanpa peran dipilih, file tidak tampil untuk semua orang.
 - **Kiriman pengunjung** — siapa pun bisa menempel tautan lewat form; masuk sebagai *Menunggu*, admin menyetujui dari daftar. Tautan yang sudah ada ditolak otomatis.
 - **Moderasi** — bookmark yang dibuat pengguna non-admin otomatis berstatus *Menunggu*; hanya admin (kapabilitas `manage_options`) yang bisa menyetujui. Admin diberi notifikasi lewat angka pada menu dan pemberitahuan saat ada yang menunggu.
 - **Kontrol akses (audience)** — tampilkan ke *Siapa saja*, *Pengguna login*, atau *Peran tertentu*.
@@ -42,7 +42,12 @@ link"**.
 | Shortcode | Fungsi |
 | --- | --- |
 | `[dp_googl_drive]` | Menampilkan daftar bookmark yang sudah disetujui. |
+| `[dp_googl_drive show_title="no"]` | Sama, tetapi menyembunyikan judul tiap bookmark (hanya isinya). |
+| `[dp_googl_drive per_page="5"]` | Mengatur jumlah bookmark per muat (batch lazy loading). |
 | `[dp_googl_drive_form]` | Menampilkan form bagi pengunjung untuk mengirim tautan. |
+
+Atribut `show_title` menerima `yes` (default) atau `no`. Atribut `per_page`
+(lazy loading) menerima bilangan bulat; jika kosong memakai nilai Pengaturan.
 
 Contoh halaman:
 
@@ -69,13 +74,22 @@ Di **DP Google Drive → Semua Link**, gunakan aksi baris **Setujui** / **Batalk
 
 ## Kontrol akses (Audience)
 
-| Pilihan | Yang melihat |
+Nama file & daftar folder **selalu tampil** untuk semua pengunjung. Yang dibatasi
+adalah tombol **Unduh**: aktif bila pengunjung berhak, terkunci (disabled) bila tidak.
+
+| Pilihan “Dibagi ke” | Tombol unduh aktif untuk |
 | --- | --- |
 | Siapa saja (publik) | Semua pengunjung. Kiriman pengunjung selalu memakai ini. |
-| Pengguna login | Hanya pengguna yang sudah login. |
-| Peran tertentu | Hanya pengguna login yang salah satu perannya dicentang. |
+| Pengguna login | Pengguna yang sudah login. |
+| Peran tertentu | Pengguna login yang salah satu perannya dicentang. |
 
-Administrator (kapabilitas `manage_options`) selalu melihat semua bookmark.
+“Akses per file” menambahkan batas per berkas di dalam folder: file yang diberi
+peran hanya bisa diunduh oleh peran itu; tanpa peran dipilih, tombol unduh
+terkunci untuk semua. Administrator (kapabilitas `manage_options`) selalu bisa
+mengunduh.
+
+Catatan: tombol terkunci hanya membatasi lewat UI — tautan unduh mengarah
+langsung ke Google Drive, jadi bukan penegakan keras.
 
 ## Pengaturan
 
@@ -83,7 +97,7 @@ Menu **DP Google Drive → Pengaturan**. Opsi disimpan pada option `dp_gdrive_se
 
 | Kunci | Bawaan | Keterangan |
 | --- | --- | --- |
-| `per_page` | `20` | Jumlah bookmark per halaman pada daftar. |
+| `per_page` | `5` | Jumlah bookmark per muat (batch). Sisanya dimuat otomatis saat scroll. |
 | `cache_lifetime` | `6` | Lama cache pembacaan folder (jam). |
 | `allow_guest_submit` | `1` | Izinkan tamu (tanpa login) mengirim tautan. |
 | `delete_data` | `0` | Hapus semua data saat plugin dihapus. |
@@ -124,7 +138,7 @@ Post meta:
 | `_dp_gdrive_resourcekey` | Resource key (bila ada) |
 | `_dp_gdrive_audience` | `public` / `logged_in` / `roles` |
 | `_dp_gdrive_roles` | Array peran (bila audience `roles`) |
-| `_dp_gdrive_file_audience` | Map `file_id => [peran]` untuk akses per file (absen = publik) |
+| `_dp_gdrive_file_audience` | Map `file_id => [peran]` untuk akses unduh per file (absen = ikut aturan bookmark; array kosong = tombol unduh terkunci untuk semua non-admin) |
 | `_dp_gdrive_submitter` | Nama pengirim (kiriman tamu) |
 | `_dp_gdrive_submitter_email` | Email pengirim (kiriman tamu) |
 

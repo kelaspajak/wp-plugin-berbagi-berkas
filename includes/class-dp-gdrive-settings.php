@@ -21,7 +21,7 @@ class DP_GDrive_Settings {
 	 */
 	public static function defaults() {
 		return array(
-			'per_page'           => 20,
+			'per_page'           => 5,
 			'cache_lifetime'     => 6,
 			'allow_guest_submit' => 1,
 			'delete_data'        => 0,
