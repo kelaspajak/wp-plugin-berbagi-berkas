@@ -19,26 +19,45 @@ class DP_GDrive_Templates {
 	 *
 	 * @param bool     $show_title Whether to print each bookmark's title.
 	 * @param int|null $per_page   Bookmarks per batch; null falls back to the setting.
+	 * @param string   $view       Layout: "catalog" or "table".
+	 * @param array    $search     Search args: q (keyword).
 	 * @return string
 	 */
-	public static function render_list( $show_title = true, $per_page = null ) {
+	public static function render_list( $show_title = true, $per_page = null, $view = 'catalog', $search = array() ) {
 		if ( null === $per_page ) {
 			$per_page = (int) DP_GDrive_Settings::get( 'per_page', 5 );
 		}
 		$per_page = max( 1, (int) $per_page );
+		$view     = in_array( $view, array( 'catalog', 'table' ), true ) ? $view : 'catalog';
 
-		$bookmarks = self::published_bookmarks();
+		$bookmarks = self::published_bookmarks( $search );
 		$total     = count( $bookmarks );
 
+		$search_form = 'catalog' === $view ? self::search_form( $search ) : '';
+
 		if ( 0 === $total ) {
-			return '<div class="dp-gdrive dp-gdrive--empty">' . esc_html__( 'Belum ada bookmark.', 'dp-googl-drive' ) . '</div>';
+			return '<div class="dp-gdrive dp-gdrive--empty">' . $search_form . '<p>' . esc_html__( 'Belum ada berkas yang cocok.', 'dp-googl-drive' ) . '</p></div>';
 		}
 
-		$slice = array_slice( $bookmarks, 0, $per_page );
+		$slice  = array_slice( $bookmarks, 0, $per_page );
 		$offset = count( $slice );
 
-		$html  = '<div class="dp-gdrive" data-dp-gdrive-list data-show-title="' . ( $show_title ? '1' : '0' ) . '" data-per-page="' . esc_attr( $per_page ) . '" data-offset="' . esc_attr( $offset ) . '" data-total="' . esc_attr( $total ) . '" data-nonce="' . esc_attr( wp_create_nonce( 'dp_gdrive_list' ) ) . '">';
-		$html .= self::render_bookmarks( $slice, $show_title );
+		$html  = '<div class="dp-gdrive' . ( 'catalog' === $view ? ' dp-gdrive--catalog' : '' ) . '" data-dp-gdrive-list'
+			. ' data-view="' . esc_attr( $view ) . '"'
+			. ' data-show-title="' . ( $show_title ? '1' : '0' ) . '"'
+			. ' data-per-page="' . esc_attr( $per_page ) . '"'
+			. ' data-offset="' . esc_attr( $offset ) . '"'
+			. ' data-total="' . esc_attr( $total ) . '"'
+			. ' data-q="' . esc_attr( isset( $search['q'] ) ? $search['q'] : '' ) . '"'
+			. ' data-nonce="' . esc_attr( wp_create_nonce( 'dp_gdrive_list' ) ) . '">';
+		$html .= $search_form;
+
+		if ( 'catalog' === $view ) {
+			$html .= '<div class="dp-gdrive-catalog" data-dp-gdrive-items>' . self::render_cards( $slice, $show_title ) . '</div>';
+		} else {
+			$html .= self::render_bookmarks( $slice, $show_title );
+		}
+
 		$html .= '</div>';
 
 		if ( $total > $offset ) {
@@ -49,22 +68,162 @@ class DP_GDrive_Templates {
 	}
 
 	/**
-	 * All published bookmarks, newest first.
+	 * All published bookmarks, optionally filtered by keyword.
 	 *
 	 * Audience restrictions never hide a bookmark; they only gate its downloads.
 	 *
+	 * @param array $args Search args: q (keyword).
 	 * @return WP_Post[]
 	 */
-	public static function published_bookmarks() {
-		return get_posts(
-			array(
-				'post_type'      => DP_GDrive_CPT::LINK,
-				'post_status'    => 'publish',
-				'posts_per_page' => -1,
-				'orderby'        => 'date',
-				'order'          => 'DESC',
-			)
+	public static function published_bookmarks( $args = array() ) {
+		$query = array(
+			'post_type'      => DP_GDrive_CPT::LINK,
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
 		);
+
+		$q = isset( $args['q'] ) ? trim( (string) $args['q'] ) : '';
+		if ( '' !== $q ) {
+			$query['s'] = $q;
+		}
+
+		return get_posts( $query );
+	}
+
+	/**
+	 * Catalog status labels.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function statuses() {
+		return array(
+			'active'     => __( 'Aktif', 'dp-googl-drive' ),
+			'archive'    => __( 'Arsip', 'dp-googl-drive' ),
+			'superseded' => __( 'Digantikan', 'dp-googl-drive' ),
+			'review'     => __( 'Perlu ditinjau', 'dp-googl-drive' ),
+		);
+	}
+
+	/**
+	 * Search form for the catalog view.
+	 *
+	 * @param array $search Current search args.
+	 * @return string
+	 */
+	protected static function search_form( $search ) {
+		$q = isset( $search['q'] ) ? (string) $search['q'] : '';
+
+		$html  = '<form class="dp-gdrive-search" method="get" action="' . esc_url( self::current_url() ) . '" role="search">';
+		foreach ( $_GET as $key => $value ) {
+			if ( 'dp_q' === $key || ! is_scalar( $value ) ) {
+				continue;
+			}
+			$html .= '<input type="hidden" name="' . esc_attr( $key ) . '" value="' . esc_attr( wp_unslash( $value ) ) . '" />';
+		}
+		$html .= '<input type="search" name="dp_q" class="dp-gdrive-search__q" value="' . esc_attr( $q ) . '" placeholder="' . esc_attr__( 'Cari nama berkas atau topik…', 'dp-googl-drive' ) . '" />';
+		$html .= '<button type="submit" class="dp-gdrive-button">' . esc_html__( 'Cari', 'dp-googl-drive' ) . '</button>';
+		if ( '' !== $q ) {
+			$html .= '<a class="dp-gdrive-search__reset" href="' . esc_url( self::current_url() ) . '">' . esc_html__( 'Reset', 'dp-googl-drive' ) . '</a>';
+		}
+		$html .= '</form>';
+
+		return $html;
+	}
+
+	/**
+	 * Current page URL, used as the search form action.
+	 *
+	 * @return string
+	 */
+	protected static function current_url() {
+		$url = get_permalink();
+
+		return $url ? $url : home_url( '/' );
+	}
+
+	/**
+	 * Render catalog cards.
+	 *
+	 * @param WP_Post[] $posts      Bookmarks.
+	 * @param bool      $show_title Whether to print each bookmark's title.
+	 * @return string
+	 */
+	public static function render_cards( $posts, $show_title = true ) {
+		$html = '';
+
+		foreach ( $posts as $post ) {
+			$html .= self::render_card( $post, $show_title );
+		}
+
+		return $html;
+	}
+
+	/**
+	 * Render a single catalog card (metadata only; Drive is fetched on demand).
+	 *
+	 * @param WP_Post $post       Bookmark post.
+	 * @param bool    $show_title Whether to print the title.
+	 * @return string
+	 */
+	protected static function render_card( $post, $show_title = true ) {
+		$type        = (string) get_post_meta( $post->ID, '_dp_gdrive_type', true );
+		$format      = (string) get_post_meta( $post->ID, '_dp_gdrive_format', true );
+		$period      = (string) get_post_meta( $post->ID, '_dp_gdrive_period', true );
+		$version     = (string) get_post_meta( $post->ID, '_dp_gdrive_version', true );
+		$status_key  = (string) get_post_meta( $post->ID, '_dp_gdrive_status', true );
+		$description = (string) get_post_meta( $post->ID, '_dp_gdrive_description', true );
+		$contributor = (string) get_post_meta( $post->ID, '_dp_gdrive_contributor', true );
+		$source      = (string) get_post_meta( $post->ID, '_dp_gdrive_source_url', true );
+		$license     = (string) get_post_meta( $post->ID, '_dp_gdrive_license', true );
+
+		$statuses = self::statuses();
+		if ( ! isset( $statuses[ $status_key ] ) ) {
+			$status_key = 'active';
+		}
+
+		if ( '' === $format ) {
+			$format = 'folder' === $type ? __( 'Folder', 'dp-googl-drive' ) : __( 'File', 'dp-googl-drive' );
+		}
+
+		$badges   = array();
+		$badges[] = '<span class="dp-gdrive-badge dp-gdrive-badge--' . esc_attr( $status_key ) . '">' . esc_html( $format ) . '</span>';
+		if ( '' !== $period ) {
+			$badges[] = '<span class="dp-gdrive-badge">' . esc_html( $period ) . '</span>';
+		}
+		$badges[] = '<span class="dp-gdrive-badge dp-gdrive-badge--' . esc_attr( $status_key ) . '">' . esc_html( $statuses[ $status_key ] ) . '</span>';
+
+		$facts = array();
+		if ( '' !== $contributor ) {
+			$facts[] = esc_html__( 'Kontributor:', 'dp-googl-drive' ) . ' ' . esc_html( $contributor );
+		}
+		if ( '' !== $version ) {
+			$facts[] = esc_html__( 'Versi:', 'dp-googl-drive' ) . ' ' . esc_html( $version );
+		}
+		if ( '' !== $license ) {
+			$facts[] = esc_html__( 'Lisensi:', 'dp-googl-drive' ) . ' ' . esc_html( $license );
+		}
+		if ( '' !== $source ) {
+			$facts[] = '<a href="' . esc_url( $source ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Sumber asli', 'dp-googl-drive' ) . '</a>';
+		}
+
+		$html  = '<article class="dp-gdrive-catalog-card" data-dp-gdrive-card data-post="' . esc_attr( $post->ID ) . '" data-nonce="' . esc_attr( wp_create_nonce( 'dp_gdrive_card' ) ) . '">';
+		if ( $show_title ) {
+			$html .= '<h3 class="dp-gdrive-catalog-card__title">' . esc_html( get_the_title( $post ) ) . '</h3>';
+		}
+		$html .= '<p class="dp-gdrive-catalog-card__meta">' . implode( '', $badges ) . '</p>';
+		if ( '' !== $description ) {
+			$html .= '<p class="dp-gdrive-catalog-card__desc">' . esc_html( wp_trim_words( $description, 32 ) ) . '</p>';
+		}
+		if ( ! empty( $facts ) ) {
+			$html .= '<p class="dp-gdrive-catalog-card__facts">' . implode( ' · ', $facts ) . '</p>';
+		}
+		$html .= '<p class="dp-gdrive-catalog-card__actions"><button type="button" class="dp-gdrive-button dp-gdrive-catalog-card__open" aria-expanded="false">' . esc_html__( 'Lihat berkas', 'dp-googl-drive' ) . '</button></p>';
+		$html .= '<div class="dp-gdrive-catalog-card__panel" hidden></div>';
+		$html .= '</article>';
+
+		return $html;
 	}
 
 	/**

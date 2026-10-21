@@ -210,6 +210,243 @@
 			sections.push( { applyTrail: applyTrail, render: render } );
 		}
 
+		function initCard( card ) {
+			var btn = card.querySelector( '.dp-gdrive-catalog-card__open' );
+			var panel = card.querySelector( '.dp-gdrive-catalog-card__panel' );
+			if ( ! btn || ! panel ) {
+				return;
+			}
+
+			btn.addEventListener( 'click', function () {
+				if ( ! panel.hidden ) {
+					panel.hidden = true;
+					btn.setAttribute( 'aria-expanded', 'false' );
+					return;
+				}
+
+				panel.hidden = false;
+				btn.setAttribute( 'aria-expanded', 'true' );
+
+				if ( panel.getAttribute( 'data-loaded' ) === '1' ) {
+					return;
+				}
+
+				panel.setAttribute( 'data-loaded', '1' );
+				panel.innerHTML = '<p class="dp-gdrive-loading">' + ( i18n.loading || 'Loading…' ) + '</p>';
+
+				var body = new URLSearchParams();
+				body.append( 'action', 'dp_gdrive_bookmark' );
+				body.append( 'nonce', card.getAttribute( 'data-nonce' ) || '' );
+				body.append( 'id', card.getAttribute( 'data-post' ) || '' );
+
+				fetch( config.ajaxUrl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: body.toString()
+				} )
+					.then( function ( response ) {
+						return response.json();
+					} )
+					.then( function ( json ) {
+						if ( ! json || ! json.success || ! json.data || ! json.data.html ) {
+							throw new Error( 'failed' );
+						}
+
+						panel.innerHTML = json.data.html;
+						var section = panel.querySelector( '.dp-gdrive-bookmark' );
+						if ( section ) {
+							initSection( section );
+						}
+					} )
+					.catch( function () {
+						panel.setAttribute( 'data-loaded', '0' );
+						panel.innerHTML = '<p class="dp-gdrive-error">' + ( i18n.error || 'Error' ) + '</p>';
+					} );
+			} );
+		}
+
+		function initPeek( dialog ) {
+			var btn = dialog.querySelector( '[data-dp-gdrive-peek]' );
+			var url = dialog.querySelector( 'input[name="dp_gdrive_url"]' );
+			var title = dialog.querySelector( 'input[name="dp_gdrive_title"]' );
+			var status = dialog.querySelector( '[data-dp-gdrive-peek-status]' );
+			if ( ! btn || ! url ) {
+				return;
+			}
+
+			var label = btn.textContent;
+			var busy = false;
+
+			function setStatus( text, isError, suggestion ) {
+				if ( ! status ) {
+					return;
+				}
+
+				status.textContent = '';
+				status.classList.toggle( 'dp-gdrive-peek-status--error', !! isError );
+
+				if ( text ) {
+					status.appendChild( document.createTextNode( text ) );
+				}
+
+				if ( suggestion ) {
+					var use = document.createElement( 'button' );
+					use.type = 'button';
+					use.className = 'dp-gdrive-peek-status__use';
+					use.textContent = i18n.peekUse || 'Use this name';
+					use.addEventListener( 'click', function () {
+						if ( title ) {
+							title.value = suggestion;
+						}
+						setStatus( i18n.peekFilled || '', false, '' );
+					} );
+
+					status.appendChild( document.createTextNode( ' ' ) );
+					status.appendChild( use );
+				}
+			}
+
+			btn.addEventListener( 'click', function () {
+				if ( busy ) {
+					return;
+				}
+
+				var value = ( url.value || '' ).trim();
+				if ( ! value ) {
+					setStatus( i18n.peekEmpty || '', true, '' );
+					url.focus();
+					return;
+				}
+
+				busy = true;
+				btn.disabled = true;
+				btn.textContent = i18n.peekLoading || label;
+				setStatus( '', false, '' );
+
+				var body = new URLSearchParams();
+				body.append( 'action', 'dp_gdrive_peek' );
+				body.append( 'nonce', config.peekNonce || '' );
+				body.append( 'url', value );
+
+				fetch( config.ajaxUrl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+					body: body.toString()
+				} )
+					.then( function ( response ) {
+						return response.json();
+					} )
+					.then( function ( json ) {
+						if ( ! json || ! json.success || ! json.data ) {
+							throw new Error( ( json && json.data && json.data.message ) || i18n.peekError || 'Error' );
+						}
+
+						var data = json.data;
+						var suggestion = '';
+						var current = title ? title.value.trim() : '';
+
+						if ( title && data.title ) {
+							if ( '' === current ) {
+								title.value = data.title;
+							} else if ( current !== data.title ) {
+								suggestion = data.title;
+							}
+						}
+
+						setStatus( data.message || '', false, suggestion );
+					} )
+					.catch( function ( error ) {
+						setStatus( ( error && error.message ) || i18n.peekError || 'Error', true, '' );
+					} )
+					.then( function () {
+						busy = false;
+						btn.disabled = false;
+						btn.textContent = label;
+					} );
+			} );
+		}
+
+		function initSubmitDialog( wrapper ) {
+			var trigger = wrapper.querySelector( '[data-dp-gdrive-open]' );
+			var dialog = wrapper.querySelector( '[data-dp-gdrive-dialog]' );
+			if ( ! trigger || ! dialog ) {
+				return;
+			}
+
+			var supportsModal = typeof dialog.showModal === 'function';
+
+			if ( supportsModal ) {
+				dialog.classList.add( 'dp-gdrive-dialog--enhanced' );
+				dialog.removeAttribute( 'open' );
+			} else {
+				dialog.classList.add( 'dp-gdrive-dialog--enhanced', 'dp-gdrive-dialog--inline' );
+			}
+
+			function open() {
+				if ( supportsModal ) {
+					if ( dialog.open ) {
+						return;
+					}
+					dialog.showModal();
+				} else {
+					dialog.setAttribute( 'open', '' );
+				}
+
+				document.documentElement.classList.add( 'dp-gdrive-dialog-open' );
+				trigger.setAttribute( 'aria-expanded', 'true' );
+
+				var first = dialog.querySelector( 'input[name="dp_gdrive_url"]' ) || dialog.querySelector( 'input, textarea, select' );
+				if ( first ) {
+					window.setTimeout( function () {
+						first.focus();
+					}, 30 );
+				}
+			}
+
+			function close() {
+				if ( supportsModal && dialog.open ) {
+					dialog.close();
+				} else {
+					dialog.removeAttribute( 'open' );
+				}
+
+				document.documentElement.classList.remove( 'dp-gdrive-dialog-open' );
+				trigger.setAttribute( 'aria-expanded', 'false' );
+				trigger.focus();
+			}
+
+			trigger.addEventListener( 'click', function ( event ) {
+				if ( supportsModal ) {
+					event.preventDefault();
+				}
+				open();
+			} );
+
+			var closer = dialog.querySelector( '[data-dp-gdrive-close]' );
+			if ( closer ) {
+				closer.addEventListener( 'click', close );
+			}
+
+			dialog.addEventListener( 'click', function ( event ) {
+				if ( event.target === dialog ) {
+					close();
+				}
+			} );
+
+			dialog.addEventListener( 'close', function () {
+				document.documentElement.classList.remove( 'dp-gdrive-dialog-open' );
+				trigger.setAttribute( 'aria-expanded', 'false' );
+			} );
+
+			if ( dialog.getAttribute( 'data-open-on-load' ) === '1' ) {
+				window.setTimeout( open, 50 );
+			}
+
+			initPeek( dialog );
+		}
+
 		function initList( list ) {
 			var loadmore = list.nextElementSibling;
 			if ( ! loadmore || ! loadmore.hasAttribute( 'data-dp-gdrive-loadmore' ) ) {
@@ -224,6 +461,9 @@
 			var offset = parseInt( list.getAttribute( 'data-offset' ), 10 ) || 0;
 			var total = parseInt( list.getAttribute( 'data-total' ), 10 ) || 0;
 			var showTitle = list.getAttribute( 'data-show-title' ) === '1' ? '1' : '0';
+			var view = list.getAttribute( 'data-view' ) || 'catalog';
+			var q = list.getAttribute( 'data-q' ) || '';
+			var items = list.querySelector( '[data-dp-gdrive-items]' ) || list;
 			var busy = false;
 
 			function showButton() {
@@ -256,6 +496,8 @@
 				body.append( 'offset', offset );
 				body.append( 'per_page', perPage );
 				body.append( 'show_title', showTitle );
+				body.append( 'view', view );
+				body.append( 'q', q );
 
 				fetch( config.ajaxUrl, {
 					method: 'POST',
@@ -278,13 +520,19 @@
 						while ( holder.firstChild ) {
 							var node = holder.firstChild;
 							holder.removeChild( node );
-							list.appendChild( node );
-							if ( node.nodeType === 1 && node.classList && node.classList.contains( 'dp-gdrive-bookmark' ) ) {
+							items.appendChild( node );
+							if ( node.nodeType === 1 && node.classList && ( node.classList.contains( 'dp-gdrive-bookmark' ) || node.classList.contains( 'dp-gdrive-catalog-card' ) ) ) {
 								added.push( node );
 							}
 						}
 
-						added.forEach( initSection );
+						added.forEach( function ( node ) {
+							if ( node.classList.contains( 'dp-gdrive-catalog-card' ) ) {
+								initCard( node );
+							} else {
+								initSection( node );
+							}
+						} );
 
 						offset = parseInt( json.data.offset, 10 ) || offset;
 						total = parseInt( json.data.total, 10 ) || total;
@@ -328,6 +576,8 @@
 		}
 
 		Array.prototype.forEach.call( document.querySelectorAll( '.dp-gdrive-bookmark[data-dp-gdrive]' ), initSection );
+		Array.prototype.forEach.call( document.querySelectorAll( '[data-dp-gdrive-card]' ), initCard );
+		Array.prototype.forEach.call( document.querySelectorAll( '[data-dp-gdrive-submit]' ), initSubmitDialog );
 		Array.prototype.forEach.call( document.querySelectorAll( '[data-dp-gdrive-list]' ), initList );
 
 		window.addEventListener( 'popstate', function () {

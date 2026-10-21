@@ -207,10 +207,12 @@ class DP_GDrive_Admin {
 
 			<h2><?php esc_html_e( 'Menampilkan di halaman', 'dp-googl-drive' ); ?></h2>
 			<p><?php esc_html_e( 'Tempel shortcode ini di sebuah Page atau Post:', 'dp-googl-drive' ); ?></p>
-			<p><code>[dp_googl_drive]</code> &mdash; <?php esc_html_e( 'daftar bookmark yang sudah disetujui.', 'dp-googl-drive' ); ?></p>
+			<p><code>[dp_googl_drive]</code> &mdash; <?php esc_html_e( 'katalog berkas (kartu + pencarian).', 'dp-googl-drive' ); ?></p>
+			<p><code>[dp_googl_drive view="table"]</code> &mdash; <?php esc_html_e( 'tampilan tabel dengan isi folder langsung terlihat.', 'dp-googl-drive' ); ?></p>
 			<p><code>[dp_googl_drive show_title="no"]</code> &mdash; <?php esc_html_e( 'sembunyikan judul tiap bookmark (tampilkan hanya isinya).', 'dp-googl-drive' ); ?></p>
 			<p><code>[dp_googl_drive per_page="5"]</code> &mdash; <?php esc_html_e( 'jumlah bookmark per muat; sisanya dimuat otomatis saat di-scroll.', 'dp-googl-drive' ); ?></p>
-			<p><code>[dp_googl_drive_form]</code> &mdash; <?php esc_html_e( 'form bagi pengunjung untuk mengirim link (menunggu persetujuan).', 'dp-googl-drive' ); ?></p>
+			<p><code>[dp_googl_drive_form]</code> &mdash; <?php esc_html_e( 'tombol “Bagikan tautan” yang membuka form dalam dialog; isi judul bisa ditarik otomatis.', 'dp-googl-drive' ); ?></p>
+			<p><code>[dp_googl_drive_form label="Kirim berkas" title="Kirim berkas pajak"]</code> &mdash; <?php esc_html_e( 'mengubah teks tombol dan judul dialog.', 'dp-googl-drive' ); ?></p>
 		</div>
 		<?php
 	}
@@ -328,6 +330,19 @@ class DP_GDrive_Admin {
 		$file_audience = (array) get_post_meta( $post->ID, '_dp_gdrive_file_audience', true );
 		$file_items    = array();
 
+		$description = (string) get_post_meta( $post->ID, '_dp_gdrive_description', true );
+		$format      = (string) get_post_meta( $post->ID, '_dp_gdrive_format', true );
+		$period      = (string) get_post_meta( $post->ID, '_dp_gdrive_period', true );
+		$version     = (string) get_post_meta( $post->ID, '_dp_gdrive_version', true );
+		$catalog_status = (string) get_post_meta( $post->ID, '_dp_gdrive_status', true );
+		$contributor    = (string) get_post_meta( $post->ID, '_dp_gdrive_contributor', true );
+		$source_url     = (string) get_post_meta( $post->ID, '_dp_gdrive_source_url', true );
+		$license        = (string) get_post_meta( $post->ID, '_dp_gdrive_license', true );
+		$catalog_statuses = DP_GDrive_Templates::statuses();
+		if ( ! isset( $catalog_statuses[ $catalog_status ] ) ) {
+			$catalog_status = 'active';
+		}
+
 		if ( 'folder' === $type && '' !== $file_id ) {
 			$folder_data = DP_GDrive_Drive::fetch_folder( $file_id, (string) get_post_meta( $post->ID, '_dp_gdrive_resourcekey', true ) );
 
@@ -403,6 +418,54 @@ class DP_GDrive_Admin {
 					endforeach;
 				endif;
 				?>
+			</fieldset>
+
+			<fieldset class="dp-gdrive-metabox__catalog">
+				<legend><strong><?php esc_html_e( 'Katalog', 'dp-googl-drive' ); ?></strong></legend>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-description"><strong><?php esc_html_e( 'Deskripsi', 'dp-googl-drive' ); ?></strong></label><br />
+					<textarea id="dp-gdrive-description" name="dp_gdrive_description" rows="3" class="large-text" maxlength="500"><?php echo esc_textarea( $description ); ?></textarea>
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-format"><strong><?php esc_html_e( 'Format', 'dp-googl-drive' ); ?></strong></label><br />
+					<input type="text" id="dp-gdrive-format" name="dp_gdrive_format" value="<?php echo esc_attr( $format ); ?>" maxlength="40" placeholder="PDF, XLSX, Folder…" />
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-period"><strong><?php esc_html_e( 'Periode / tahun pajak', 'dp-googl-drive' ); ?></strong></label><br />
+					<input type="text" id="dp-gdrive-period" name="dp_gdrive_period" value="<?php echo esc_attr( $period ); ?>" maxlength="40" />
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-version"><strong><?php esc_html_e( 'Versi', 'dp-googl-drive' ); ?></strong></label><br />
+					<input type="text" id="dp-gdrive-version" name="dp_gdrive_version" value="<?php echo esc_attr( $version ); ?>" maxlength="40" />
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-catalog-status"><strong><?php esc_html_e( 'Status katalog', 'dp-googl-drive' ); ?></strong></label><br />
+					<select id="dp-gdrive-catalog-status" name="dp_gdrive_catalog_status">
+						<?php foreach ( $catalog_statuses as $status_key => $status_label ) : ?>
+							<option value="<?php echo esc_attr( $status_key ); ?>" <?php selected( $catalog_status, $status_key ); ?>><?php echo esc_html( $status_label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-contributor"><strong><?php esc_html_e( 'Kontributor', 'dp-googl-drive' ); ?></strong></label><br />
+					<input type="text" id="dp-gdrive-contributor" name="dp_gdrive_contributor" value="<?php echo esc_attr( $contributor ); ?>" class="regular-text" maxlength="80" />
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-license"><strong><?php esc_html_e( 'Lisensi / izin berbagi', 'dp-googl-drive' ); ?></strong></label><br />
+					<input type="text" id="dp-gdrive-license" name="dp_gdrive_license" value="<?php echo esc_attr( $license ); ?>" class="regular-text" maxlength="120" />
+				</p>
+
+				<p class="dp-gdrive-metabox__field">
+					<label for="dp-gdrive-source"><strong><?php esc_html_e( 'Sumber asli', 'dp-googl-drive' ); ?></strong></label><br />
+					<input type="url" id="dp-gdrive-source" name="dp_gdrive_source_url" value="<?php echo esc_attr( $source_url ); ?>" class="large-text code" maxlength="300" placeholder="https://..." />
+				</p>
 			</fieldset>
 
 			<?php if ( 'folder' === $type ) : ?>
@@ -529,6 +592,29 @@ class DP_GDrive_Admin {
 
 			update_post_meta( $post_id, '_dp_gdrive_file_audience', $file_audience );
 		}
+
+		$description = isset( $_POST['dp_gdrive_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['dp_gdrive_description'] ) ) : '';
+		$format      = isset( $_POST['dp_gdrive_format'] ) ? sanitize_text_field( wp_unslash( $_POST['dp_gdrive_format'] ) ) : '';
+		$period      = isset( $_POST['dp_gdrive_period'] ) ? sanitize_text_field( wp_unslash( $_POST['dp_gdrive_period'] ) ) : '';
+		$version     = isset( $_POST['dp_gdrive_version'] ) ? sanitize_text_field( wp_unslash( $_POST['dp_gdrive_version'] ) ) : '';
+		$catalog_status = isset( $_POST['dp_gdrive_catalog_status'] ) ? sanitize_key( wp_unslash( $_POST['dp_gdrive_catalog_status'] ) ) : 'active';
+		$contributor    = isset( $_POST['dp_gdrive_contributor'] ) ? sanitize_text_field( wp_unslash( $_POST['dp_gdrive_contributor'] ) ) : '';
+		$license        = isset( $_POST['dp_gdrive_license'] ) ? sanitize_text_field( wp_unslash( $_POST['dp_gdrive_license'] ) ) : '';
+		$source_url     = isset( $_POST['dp_gdrive_source_url'] ) ? esc_url_raw( wp_unslash( $_POST['dp_gdrive_source_url'] ) ) : '';
+
+		$catalog_statuses = DP_GDrive_Templates::statuses();
+		if ( ! isset( $catalog_statuses[ $catalog_status ] ) ) {
+			$catalog_status = 'active';
+		}
+
+		update_post_meta( $post_id, '_dp_gdrive_description', $description );
+		update_post_meta( $post_id, '_dp_gdrive_format', $format );
+		update_post_meta( $post_id, '_dp_gdrive_period', $period );
+		update_post_meta( $post_id, '_dp_gdrive_version', $version );
+		update_post_meta( $post_id, '_dp_gdrive_status', $catalog_status );
+		update_post_meta( $post_id, '_dp_gdrive_contributor', $contributor );
+		update_post_meta( $post_id, '_dp_gdrive_license', $license );
+		update_post_meta( $post_id, '_dp_gdrive_source_url', $source_url );
 
 		$valid  = ! empty( $parsed['id'] );
 		$status = ( $valid && $this->can_moderate() && isset( $_POST['dp_gdrive_status'] ) && 'publish' === $_POST['dp_gdrive_status'] ) ? 'publish' : 'pending';

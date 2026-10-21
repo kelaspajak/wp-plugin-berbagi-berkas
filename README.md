@@ -1,6 +1,7 @@
 # DP Google Drive
 
-Ubah tautan Google Drive menjadi **bookmark**. Tautan folder dibaca otomatis dan
+Ubah tautan Google Drive menjadi **bookmark** dan tampilkan sebagai **katalog
+berkas** yang bisa dicari dan difilter. Tautan folder dibaca otomatis dan
 ditampilkan **per item** dengan tombol unduh. Kiriman pengunjung masuk sebagai
 **menunggu persetujuan** admin sebelum tampil.
 
@@ -8,7 +9,7 @@ Dibuat tanpa API key Google — isi folder dibaca dari endpoint publik
 `embeddedfolderview`. Folder harus dibagikan sebagai **"Siapa saja yang memiliki
 link"**.
 
-- **Versi:** 1.0.0
+- **Versi:** 1.2.2
 - **Butuh WordPress:** 5.8+
 - **Butuh PHP:** 7.4+
 - **Lisensi:** GPL-2.0-or-later
@@ -17,11 +18,15 @@ link"**.
 ## Fitur
 
 - **Dua jenis bookmark** — Folder atau File, dipilih saat menambah.
+- **Tampilan katalog** — kartu ringkas berisi judul, format, periode, status, dan deskripsi; isi Drive baru dimuat saat tombol **Lihat berkas** diklik (hemat resource).
+- **Pencarian** — cari berdasarkan judul; hasil diproses di server sehingga tetap akurat meski daftar dimuat bertahap.
+- **Metadata berkas** — deskripsi, format, periode/tahun pajak, versi, status katalog, kontributor, sumber asli, dan lisensi.
 - **Folder dirinci per item** — nama, tanggal diubah, ikon, dan tombol unduh untuk tiap file.
 - **Telusuri subfolder (gaya Google Drive)** — klik nama folder untuk masuk ke isinya, lengkap dengan breadcrumb untuk naik; tanpa reload halaman. Posisi folder tercermin di URL (`?dp_gdrive_trail=…`) sehingga bisa di-bookmark dan tombol Back bekerja.
 - **Anak yang sudah jadi bookmark disembunyikan** — item yang punya entri bookmark sendiri tidak diulang di rincian folder induknya.
-- **Akses per file** — di meta box folder, tiap file punya centang “Publik”; hilangkan centang lalu pilih peran untuk membatasi. File terbatas tidak ditampilkan bagi yang tidak berhak. Tanpa peran dipilih, file tidak tampil untuk semua orang.
-- **Kiriman pengunjung** — siapa pun bisa menempel tautan lewat form; masuk sebagai *Menunggu*, admin menyetujui dari daftar. Tautan yang sudah ada ditolak otomatis.
+- **Akses per file** — di meta box folder, tiap file punya centang “Publik”; hilangkan centang lalu pilih peran untuk membatasi. Nama file tetap tampil; tombol unduhnya dikunci bagi yang tidak berhak. Tanpa peran dipilih, tombol unduh terkunci untuk semua orang (kecuali admin).
+- **Kiriman pengunjung** — siapa pun bisa menempel tautan lewat dialog **Bagikan tautan**; masuk sebagai *Menunggu*, admin menyetujui dari daftar. Tautan yang sudah ada ditolak otomatis. Tombol **Tarik data** mengisi judul dari nama folder/berkas Google Drive.
+- **Dialog progresif** — tanpa JavaScript, form tetap tampil langsung di halaman; dengan JavaScript, form dibuka sebagai dialog modal dan bisa ditutup lewat tombol, klik latar, atau Esc.
 - **Moderasi** — bookmark yang dibuat pengguna non-admin otomatis berstatus *Menunggu*; hanya admin (kapabilitas `manage_options`) yang bisa menyetujui. Admin diberi notifikasi lewat angka pada menu dan pemberitahuan saat ada yang menunggu.
 - **Kontrol akses (audience)** — tampilkan ke *Siapa saja*, *Pengguna login*, atau *Peran tertentu*.
 - **Auto-deteksi** — jenis (folder/file), ID, dan resource key dikoreksi otomatis dari tautan.
@@ -41,13 +46,19 @@ link"**.
 
 | Shortcode | Fungsi |
 | --- | --- |
-| `[dp_googl_drive]` | Menampilkan daftar bookmark yang sudah disetujui. |
-| `[dp_googl_drive show_title="no"]` | Sama, tetapi menyembunyikan judul tiap bookmark (hanya isinya). |
+| `[dp_googl_drive]` | Menampilkan katalog berkas (kartu + pencarian). |
+| `[dp_googl_drive view="table"]` | Menampilkan tabel dengan isi folder langsung terlihat. |
+| `[dp_googl_drive show_title="no"]` | Menyembunyikan judul tiap bookmark (hanya isinya). |
 | `[dp_googl_drive per_page="5"]` | Mengatur jumlah bookmark per muat (batch lazy loading). |
-| `[dp_googl_drive_form]` | Menampilkan form bagi pengunjung untuk mengirim tautan. |
+| `[dp_googl_drive_form]` | Menampilkan tombol **Bagikan tautan** yang membuka form dalam dialog. |
+| `[dp_googl_drive_form label="Kirim berkas" title="Kirim berkas pajak"]` | Mengubah teks tombol dan judul dialog. |
 
-Atribut `show_title` menerima `yes` (default) atau `no`. Atribut `per_page`
-(lazy loading) menerima bilangan bulat; jika kosong memakai nilai Pengaturan.
+Atribut `view` menerima `catalog` (default) atau `table`. Atribut `show_title`
+menerima `yes` (default) atau `no`. Atribut `per_page` (lazy loading) menerima
+bilangan bulat; jika kosong memakai nilai Pengaturan.
+
+Katalog memakai parameter URL `dp_q` (kata kunci), jadi hasil pencarian bisa
+dibagikan lewat tautan.
 
 Contoh halaman:
 
@@ -61,8 +72,14 @@ Contoh halaman:
 
 1. Buka **DP Google Drive → Tambah Link**.
 2. Pilih **Jenis** (Folder/File) dan tempel **Link Folder** atau **Link File**.
-3. Tentukan **Status** (*Menunggu* / *Disetujui*) dan **Dibagi ke** (*Siapa saja* / *Pengguna login* / *Peran tertentu*).
-4. Simpan.
+3. Isi **Katalog**: deskripsi, format, periode, versi, status katalog,
+   kontributor, sumber asli, dan lisensi.
+4. Tentukan **Status** (*Menunggu* / *Disetujui*) dan **Dibagi ke** (*Siapa saja* / *Pengguna login* / *Peran tertentu*).
+5. Simpan.
+
+Status katalog berbeda dari status post: status post menentukan tampil/tidak,
+sedangkan status katalog (`Aktif`, `Arsip`, `Digantikan`, `Perlu ditinjau`)
+memberi tahu pengunjung kondisi berkas.
 
 Admin yang menambah manual memakai status **Disetujui** secara default. Jika
 tautan tidak valid, bookmark otomatis disimpan sebagai *Menunggu* dan muncul
@@ -71,6 +88,23 @@ notis kesalahan.
 ### Menyetujui kiriman pengunjung
 
 Di **DP Google Drive → Semua Link**, gunakan aksi baris **Setujui** / **Batalkan**.
+
+## Katalog & metadata
+
+Katalog menampilkan satu kartu per bookmark. Kartu tidak memanggil Google Drive;
+isi folder baru diambil saat tombol **Lihat berkas** diklik, lalu ditampilkan di
+bawah kartu.
+
+Pencarian memakai judul berkas.
+
+Status katalog:
+
+| Status | Arti |
+| --- | --- |
+| `Aktif` | Berlaku saat ini |
+| `Arsip` | Disimpan untuk arsip |
+| `Digantikan` | Ada versi yang lebih baru |
+| `Perlu ditinjau` | Menunggu pemeriksaan ulang |
 
 ## Kontrol akses (Audience)
 
@@ -139,6 +173,15 @@ Post meta:
 | `_dp_gdrive_audience` | `public` / `logged_in` / `roles` |
 | `_dp_gdrive_roles` | Array peran (bila audience `roles`) |
 | `_dp_gdrive_file_audience` | Map `file_id => [peran]` untuk akses unduh per file (absen = ikut aturan bookmark; array kosong = tombol unduh terkunci untuk semua non-admin) |
+| `_dp_gdrive_description` | Deskripsi singkat |
+| `_dp_gdrive_format` | Format berkas (mis. PDF, XLSX, Folder) |
+| `_dp_gdrive_period` | Periode / tahun pajak |
+| `_dp_gdrive_version` | Versi berkas |
+| `_dp_gdrive_status` | Status katalog: `active` / `archive` / `superseded` / `review` |
+| `_dp_gdrive_contributor` | Nama kontributor |
+| `_dp_gdrive_source_url` | Tautan sumber asli |
+| `_dp_gdrive_license` | Lisensi / izin berbagi |
+| `_dp_gdrive_rights_confirmed` | `1` bila pengirim menyatakan berhak membagikan |
 | `_dp_gdrive_submitter` | Nama pengirim (kiriman tamu) |
 | `_dp_gdrive_submitter_email` | Email pengirim (kiriman tamu) |
 
@@ -157,7 +200,7 @@ dp-googl-drive/
 │   ├── class-dp-gdrive-drive.php   # Parsing URL & folder, cache, URL unduh
 │   ├── class-dp-gdrive-settings.php
 │   ├── class-dp-gdrive-shortcodes.php  # Shortcode, submit, AJAX expand
-│   └── class-dp-gdrive-templates.php   # Render daftar, item, paginasi
+│   └── class-dp-gdrive-templates.php   # Render katalog, daftar, item
 └── assets/
     ├── css/dp-googl-drive.css
     └── js/
@@ -172,8 +215,31 @@ dp-googl-drive/
 - **Markup tidak resmi** — perubahan di sisi Google dapat memengaruhi parsing.
 - **Thumbnail pratinjau** dapat kedaluwarsa dari cache; jika kosong, ikon tipe dipakai sebagai gantinya.
 - **Satu level per tampilan** — isi folder dimuat per level lewat AJAX, bukan seluruh pohon sekaligus.
+- **Pencarian berbasis judul** — deskripsi dan metadata tidak ikut dicari.
 
 ## Changelog
+
+### 1.2.2
+- Badge Folder/File mengikuti warna statusnya (aktif, arsip, digantikan, perlu ditinjau).
+- Ukuran font badge diperkecil.
+
+### 1.2.1
+- Badge jenis/status kini berbentuk pil dengan titik warna (gaya shadcn/Flowbite).
+- Warna status dibedakan: aktif hijau, perlu ditinjau kuning, arsip abu-abu, digantikan merah.
+
+### 1.2.0
+- Form kiriman menjadi dialog **Bagikan tautan** dengan atribut `label` dan `title`.
+- Tombol **Tarik data** mengisi judul dari nama folder/file Google Drive.
+- Dialog memakai `<dialog>` dengan fallback progresif: tetap tampil tanpa JavaScript.
+- Notis kiriman sukses tampil di halaman; notis kesalahan/duplikat tampil di dalam dialog yang terbuka otomatis.
+- Pengkategorian dihapus dari katalog, form kiriman, dan meta box; pencarian memakai judul saja.
+
+### 1.1.0
+- Tampilan katalog (kartu) sebagai default, dengan pencarian dan filter kategori.
+- Metadata katalog: kategori, deskripsi, format, periode, versi, status, kontributor, sumber, lisensi.
+- Kategori berupa input bebas dengan saran dari kategori yang sudah dipakai.
+- Form kiriman meminta kategori dan pernyataan hak berbagi.
+- Isi Drive pada kartu dimuat sesuai permintaan (hemat resource).
 
 ### 1.0.0
 - Rilis awal: CPT, bookmark folder/file, form kiriman pengunjung, alur persetujuan, kontrol audience, meta box admin, kolom admin, pengaturan, buka subfolder via AJAX, ikon per item.

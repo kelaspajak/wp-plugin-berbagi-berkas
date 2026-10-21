@@ -199,7 +199,8 @@
 
 .dp-gdrive-form input[type="url"],
 .dp-gdrive-form input[type="text"],
-.dp-gdrive-form input[type="email"] {
+.dp-gdrive-form input[type="email"],
+.dp-gdrive-form textarea {
 	width: 100%;
 	padding: 0.5em;
 	box-sizing: border-box;
@@ -207,6 +208,7 @@
 	border-radius: 6px;
 	background: transparent;
 	color: inherit;
+	font: inherit;
 }
 
 .dp-gdrive-honeypot {
@@ -215,6 +217,145 @@
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
+}
+
+/* Share dialog */
+.dp-gdrive-share {
+	margin: 0 0 1.5em;
+}
+
+.dp-gdrive-share__open {
+	text-decoration: none;
+}
+
+.dp-gdrive-dialog {
+	width: 36em;
+	max-width: 92vw;
+	max-height: 86vh;
+	padding: 0;
+	border: 1px solid rgba(128, 128, 128, 0.5);
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+.dp-gdrive-dialog[open]:not(.dp-gdrive-dialog--enhanced) {
+	display: none;
+}
+
+.dp-gdrive-dialog--inline {
+	position: static;
+	width: auto;
+	max-height: none;
+	margin: 1em 0;
+}
+
+.dp-gdrive-dialog::backdrop {
+	background: rgba(0, 0, 0, 0.55);
+}
+
+.dp-gdrive-dialog__inner {
+	max-height: 86vh;
+	padding: 1.25em 1.5em 1.5em;
+	overflow: auto;
+	box-sizing: border-box;
+}
+
+.dp-gdrive-dialog__head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1em;
+	margin: 0 0 1em;
+	padding: 0 0 0.75em;
+	border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.dp-gdrive-dialog__title {
+	margin: 0;
+	font-size: 1.2em;
+	line-height: 1.3;
+}
+
+.dp-gdrive-dialog__close {
+	padding: 0.1em 0.35em;
+	font-size: 1.5em;
+	line-height: 1;
+	color: inherit;
+	background: none;
+	border: 0;
+	cursor: pointer;
+}
+
+.dp-gdrive-dialog-open {
+	overflow: hidden;
+}
+
+.dp-gdrive-dialog .dp-gdrive-form {
+	max-width: none;
+	margin: 0;
+}
+
+.dp-gdrive-url-row {
+	display: flex;
+	align-items: stretch;
+	gap: 0.5em;
+}
+
+.dp-gdrive-url-row input[type="url"] {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.dp-gdrive-url-row__peek {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
+.dp-gdrive-peek-status {
+	display: block;
+	margin-top: 0.35em;
+	font-size: 0.9em;
+	opacity: 0.85;
+}
+
+.dp-gdrive-peek-status:empty {
+	display: none;
+}
+
+.dp-gdrive-peek-status--error {
+	color: #b32d2e;
+}
+
+.dp-gdrive-peek-status__use {
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+@media (max-width: 600px) {
+	.dp-gdrive-dialog {
+		width: 100vw;
+		max-width: 100vw;
+		max-height: 100vh;
+		border-radius: 0;
+	}
+
+	.dp-gdrive-dialog__inner {
+		max-height: 100vh;
+		padding: 1em;
+	}
+
+	.dp-gdrive-url-row {
+		flex-wrap: wrap;
+	}
+
+	.dp-gdrive-url-row__peek {
+		width: 100%;
+	}
 }
 
 .dp-gdrive-notice {
@@ -229,6 +370,131 @@
 
 .dp-gdrive-notice--error {
 	color: #b32d2e;
+}
+
+/* Catalog */
+.dp-gdrive-search {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5em;
+	margin: 0 0 1.25em;
+}
+
+.dp-gdrive-search__q {
+	flex: 1 1 16em;
+	padding: 0.5em 0.75em;
+	border: 1px solid rgba(128, 128, 128, 0.5);
+	border-radius: 6px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+}
+
+.dp-gdrive-search__reset {
+	font-size: 0.9em;
+}
+
+.dp-gdrive-catalog {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 1em;
+}
+
+.dp-gdrive-catalog-card {
+	display: flex;
+	flex-direction: column;
+	padding: 1.1em 1.25em;
+	border: 1px solid rgba(128, 128, 128, 0.5);
+	border-radius: 8px;
+}
+
+.dp-gdrive-catalog-card__title {
+	margin: 0 0 0.5em;
+	font-size: 1.1em;
+	line-height: 1.3;
+}
+
+.dp-gdrive-catalog-card__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35em;
+	margin: 0 0 0.6em;
+}
+
+.dp-gdrive-catalog-card__desc {
+	margin: 0 0 0.6em;
+	font-size: 0.95em;
+}
+
+.dp-gdrive-catalog-card__facts {
+	margin: 0 0 0.75em;
+	font-size: 0.85em;
+	opacity: 0.8;
+}
+
+.dp-gdrive-catalog-card__actions {
+	margin: auto 0 0;
+}
+
+.dp-gdrive-catalog-card__panel {
+	margin-top: 0.9em;
+}
+
+.dp-gdrive-catalog-card__panel .dp-gdrive-bookmark {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.dp-gdrive-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	padding: 0.15em 0.6em;
+	font-size: 0.7em;
+	font-weight: 500;
+	line-height: 1.4;
+	color: #3c434a;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	white-space: nowrap;
+}
+
+.dp-gdrive-badge::before {
+	content: "";
+	flex: 0 0 auto;
+	width: 0.4em;
+	height: 0.4em;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.dp-gdrive-badge--active,
+.dp-gdrive-badge--on {
+	color: #166534;
+	background: #f0fdf4;
+	border-color: #bbf7d0;
+}
+
+.dp-gdrive-badge--archive {
+	color: #374151;
+	background: #f9fafb;
+	border-color: #e5e7eb;
+}
+
+.dp-gdrive-badge--superseded {
+	color: #991b1b;
+	background: #fef2f2;
+	border-color: #fecaca;
+}
+
+.dp-gdrive-badge--review,
+.dp-gdrive-badge--pending {
+	color: #92400e;
+	background: #fffbeb;
+	border-color: #fde68a;
 }
 
 /* Admin */
@@ -257,27 +523,6 @@
 	display: block;
 	margin-top: 0.25em;
 	color: #50575e;
-}
-
-.dp-gdrive-badge {
-	display: inline-block;
-	padding: 0.1em 0.5em;
-	font-size: 0.85em;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
-	background: #f0f0f1;
-}
-
-.dp-gdrive-badge--on {
-	border-color: #00a32a;
-	color: #007017;
-	background: #edfaef;
-}
-
-.dp-gdrive-badge--pending {
-	border-color: #dba617;
-	color: #8a6116;
-	background: #fcf9e8;
 }
 
 /* Editor meta box */

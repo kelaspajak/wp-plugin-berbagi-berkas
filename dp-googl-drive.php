@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       DP Google Drive
  * Description:       Tempel link Google Drive menjadi bookmark. Link folder ditampilkan per item dengan tombol unduh. Kiriman pengunjung menunggu persetujuan admin.
- * Version:           1.0.0
+ * Version:           1.2.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            DP
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'DP_GDRIVE_VERSION', '1.0.0' );
+define( 'DP_GDRIVE_VERSION', '1.2.2' );
 define( 'DP_GDRIVE_FILE', __FILE__ );
 define( 'DP_GDRIVE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'DP_GDRIVE_URL', plugin_dir_url( __FILE__ ) );

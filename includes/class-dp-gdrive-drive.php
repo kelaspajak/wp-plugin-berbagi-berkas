@@ -139,6 +139,74 @@ class DP_GDrive_Drive {
 	}
 
 	/**
+	 * Best-effort Drive file name, used to prefill the submission form.
+	 *
+	 * @param string $file_id File ID.
+	 * @return string File name, or an empty string when unknown.
+	 */
+	public static function fetch_file_title( $file_id ) {
+		$file_id = trim( (string) $file_id );
+		if ( '' === $file_id ) {
+			return '';
+		}
+
+		$cache_key = 'dp_gdrive_file_title_' . md5( $file_id );
+		$cached    = get_transient( $cache_key );
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
+
+		$response = wp_remote_get(
+			'https://drive.google.com/file/d/' . rawurlencode( $file_id ) . '/view',
+			array(
+				'timeout'     => 15,
+				'redirection' => 3,
+				'user-agent'  => 'Mozilla/5.0 (compatible; DP-Google-Drive/' . DP_GDRIVE_VERSION . '; +' . home_url( '/' ) . ')',
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return '';
+		}
+
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			return '';
+		}
+
+		$html  = (string) wp_remote_retrieve_body( $response );
+		$title = '';
+
+		if ( '' !== $html ) {
+			$dom = new DOMDocument();
+			libxml_use_internal_errors( true );
+			$loaded = $dom->loadHTML( '<?xml encoding="utf-8" ?>' . $html );
+			libxml_clear_errors();
+
+			if ( $loaded ) {
+				$xpath = new DOMXPath( $dom );
+
+				$og = $xpath->query( '//meta[@property="og:title"]' )->item( 0 );
+				if ( $og instanceof DOMElement ) {
+					$title = trim( (string) $og->getAttribute( 'content' ) );
+				}
+
+				if ( '' === $title ) {
+					$node = $xpath->query( '//title' )->item( 0 );
+					if ( $node ) {
+						$title = trim( (string) $node->textContent );
+					}
+				}
+			}
+		}
+
+		$title = trim( preg_replace( '/\s*[-–]\s*Google\s*Drive\s*$/iu', '', $title ) );
+
+		set_transient( $cache_key, $title, 12 * HOUR_IN_SECONDS );
+
+		return $title;
+	}
+
+	/**
 	 * Parse the folder-view HTML into a title and a list of items.
 	 *
 	 * @param string $html Response body.
